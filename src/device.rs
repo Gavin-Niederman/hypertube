@@ -44,12 +44,12 @@ impl Device {
         interface_request.ifr_name[..name.as_bytes().len()]
             .copy_from_slice(bytes_to_signed(name.as_bytes()));
 
-        interface_request.ifr_ifru.ifru_flags = (if num_queues == 1 {
-            libc::IFF_TUN
-        } else {
-            libc::IFF_MULTI_QUEUE
-        } | if config.no_pi { libc::IFF_NO_PI } else { 0 })
-            as i16; // 0x1001
+        interface_request.ifr_ifru.ifru_flags = libc::IFF_TUN as i16
+            | (if num_queues > 1 {
+                libc::IFF_MULTI_QUEUE
+            } else {
+                0
+            } | if config.no_pi { libc::IFF_NO_PI } else { 0 }) as i16; // 0x1001
 
         unsafe {
             for _ in 0..num_queues {
@@ -58,7 +58,7 @@ impl Device {
                     libc::O_RDWR,
                 ));
 
-                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &interface_request) < 0 {
+                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request) < 0 {
                     libc::close(fd.as_raw_fd());
 
                     return Err(io::Error::last_os_error());
@@ -69,11 +69,7 @@ impl Device {
         }
         let ctl = unsafe { OwnedFd::from_raw_fd(libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0)) };
 
-        Ok(Self {
-            name,
-            queues,
-            ctl,
-        })
+        Ok(Self { name, queues, ctl })
     }
 
     unsafe fn request(&self) -> libc::ifreq {
