@@ -1,0 +1,11 @@
+[package]
+name = "hypertube"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cidr = "0.2.2"
+ioctl-sys = "0.8.0"
+libc = "0.2.147"
