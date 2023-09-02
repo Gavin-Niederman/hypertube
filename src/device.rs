@@ -133,9 +133,9 @@ impl Device {
 
     pub fn enabled(&self) -> io::Result<bool> {
         unsafe {
-            let ifr = self.request();
+            let mut ifr = self.request();
 
-            if libc::ioctl(self.ctl.as_raw_fd(), libc::SIOCGIFFLAGS, &ifr) < 0 {
+            if libc::ioctl(self.ctl.as_raw_fd(), libc::SIOCGIFFLAGS, &mut ifr) < 0 {
                 return Err(io::Error::last_os_error());
             }
 

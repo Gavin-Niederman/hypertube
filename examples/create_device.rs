@@ -5,5 +5,7 @@ fn main() {
 
     let device = hypertube::device::Device::new(config).unwrap();
 
-    println!("{:?}", device);
+    let queue = device.queue(0).unwrap();
+
+    queue.write(&[0x0, 0x0, 0x0]).unwrap()
 }
