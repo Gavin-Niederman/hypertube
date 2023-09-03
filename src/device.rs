@@ -1,6 +1,6 @@
 use std::{
     ffi::CString,
-    io::{self, Read, Write},
+    io,
     mem,
     net::IpAddr,
     os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
@@ -154,23 +154,17 @@ impl<const MQ: bool> Device<MQ> {
     }
 
     pub fn queue(&self, index: usize) -> io::Result<Queue<true>> {
-        let queue = match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
-            Some(queue) => queue,
+        Ok(match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+            Some(queue) => queue?,
             None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
-        };
-        queue.set_blocking(true)?;
-
-        Ok(queue)
+        })
     }
 
     pub fn queue_nonblocking(&self, index: usize) -> io::Result<Queue<false>> {
-        let queue = match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
-            Some(queue) => queue,
+        Ok(match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+            Some(queue) => queue?,
             None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
-        };
-        queue.set_blocking(false)?;
-
-        Ok(queue)
+        })
     }
 
     pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {

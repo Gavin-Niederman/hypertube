@@ -9,22 +9,19 @@ pub struct Queue<'a, const BLOCKING: bool> {
 }
 
 impl<'a, const BLOCKING: bool> Queue<'a, BLOCKING> {
-    pub fn new(fd: BorrowedFd<'a>) -> Self {
-        Self { fd }
-    }
-
-    pub fn set_blocking(&self, blocking: bool) -> io::Result<()> {
-        let mut flags = unsafe { libc::fcntl(self.as_raw_fd(), libc::F_GETFL) };
-        if blocking {
+    pub(crate) fn new(fd: BorrowedFd<'a>) -> io::Result<Self> {
+        let mut flags = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFL) };
+        if BLOCKING {
             flags &= !libc::O_NONBLOCK;
         } else {
             flags |= libc::O_NONBLOCK;
         }
 
-        if unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETFL, flags) } < 0 {
+        if unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags) } < 0 {
             return Err(io::Error::last_os_error())
         }
-        Ok(())
+
+        Ok(Self { fd })
     }
 }
 
