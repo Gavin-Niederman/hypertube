@@ -35,6 +35,14 @@ impl<'a> Queue<'a> {
             Ok(())
         }
     }
+
+    pub fn set_blocking(&self, blocking: bool) -> io::Result<()> {
+        let flags = unsafe { libc::fcntl(self.as_raw_fd(), libc::F_GETFL) | if blocking { 0 } else { libc::O_NONBLOCK } };
+        if unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETFL, flags) } < 0 {
+            return Err(io::Error::last_os_error())
+        }
+        Ok(())
+    }
 }
 
 impl AsRawFd for Queue<'_> {

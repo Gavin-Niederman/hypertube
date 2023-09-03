@@ -21,7 +21,7 @@ impl Device {
     /// Creates a new Device.
     /// Errors if name is too long.
     pub fn new(config: Config) -> io::Result<Self> {
-        let name = config.name.unwrap_or_default();
+        let name = config.name.clone().unwrap_or_default();
         if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -78,7 +78,26 @@ impl Device {
         }
         let ctl = unsafe { OwnedFd::from_raw_fd(ctl) };
 
-        Ok(Self { name, queues, ctl })
+        let device = Self { name, queues, ctl };
+        device.configure(&config);
+        
+        Ok(device)
+    }
+
+    fn configure(&self, config: &Config) {
+        for queue in self.queues.iter() {
+            let queue = Queue::new(queue.as_fd());
+
+            queue.set_blocking(config.blocking).unwrap();
+        }
+
+        if let Some(address) = config.address {
+            self.set_address(address).unwrap();
+        }
+
+        if let Some(netmask) = config.netmask {
+            self.set_netmask(netmask).unwrap();
+        }
     }
 
     unsafe fn request(&self) -> libc::ifreq {
