@@ -1,5 +1,5 @@
 use std::{
-    ffi::{CString, CStr},
+    ffi::{CStr, CString},
     io, mem,
     net::IpAddr,
     os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd, RawFd},
@@ -27,10 +27,9 @@ impl Device {
                         io::ErrorKind::InvalidInput,
                         "interface name too long",
                     ));
-
                 }
                 Some(name)
-            },
+            }
             None => None,
         };
 
@@ -48,7 +47,13 @@ impl Device {
         // Copy the name and leave the rest of the array as 0 (nul)
         if let Some(name) = name {
             let count = name.as_bytes().len();
-            unsafe { std::ptr::copy_nonoverlapping(name.into_raw(), interface_request.ifr_name.as_mut_ptr(), count) };
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    name.into_raw(),
+                    interface_request.ifr_name.as_mut_ptr(),
+                    count,
+                )
+            };
         }
 
         let mut flags = 0;
@@ -62,7 +67,7 @@ impl Device {
 
         interface_request.ifr_ifru.ifru_flags = flags;
 
-        unsafe { 
+        unsafe {
             for _ in 0..num_queues {
                 let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
                 if result < 0 {
@@ -88,7 +93,11 @@ impl Device {
         }
         let ctl = unsafe { OwnedFd::from_raw_fd(ctl) };
 
-        let device = Self { name: name.into(), queues, ctl };
+        let device = Self {
+            name: name.into(),
+            queues,
+            ctl,
+        };
         device.configure(&config);
 
         Ok(device)

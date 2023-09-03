@@ -12,7 +12,13 @@ pub struct Config {
 impl Config {
     /// Creates a new Config.
     /// It is reccommended to use ConfigBuilder instead.
-    pub fn new(name: Option<CString>, num_queues: Option<usize>, no_pi: bool, address: Option<std::net::IpAddr>, netmask: Option<cidr::IpCidr>) -> Self {
+    pub fn new(
+        name: Option<CString>,
+        num_queues: Option<usize>,
+        no_pi: bool,
+        address: Option<std::net::IpAddr>,
+        netmask: Option<cidr::IpCidr>,
+    ) -> Self {
         Self {
             name,
             num_queues,

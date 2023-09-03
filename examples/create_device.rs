@@ -1,4 +1,4 @@
-use std::{thread::{spawn, scope}, net::Ipv4Addr};
+use std::{net::Ipv4Addr, thread::scope};
 
 use cidr::Ipv4Cidr;
 
@@ -6,7 +6,9 @@ fn main() {
     let config = hypertube::config::ConfigBuilder::new()
         .with_num_queues(2)
         .with_address(std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 1)))
-        .with_netmask(cidr::IpCidr::V4(Ipv4Cidr::new(Ipv4Addr::new(10, 0, 0, 0), 24).unwrap()))
+        .with_netmask(cidr::IpCidr::V4(
+            Ipv4Cidr::new(Ipv4Addr::new(10, 0, 0, 0), 24).unwrap(),
+        ))
         .build();
 
     let device = hypertube::device::Device::new(config).unwrap();

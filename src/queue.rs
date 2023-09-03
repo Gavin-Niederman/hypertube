@@ -1,6 +1,7 @@
 use std::{
     io,
-    os::fd::{AsRawFd, BorrowedFd}, task::Poll,
+    os::fd::{AsRawFd, BorrowedFd},
+    task::Poll,
 };
 
 #[derive(Debug)]
@@ -18,7 +19,7 @@ impl<'a, const BLOCKING: bool> Queue<'a, BLOCKING> {
         }
 
         if unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags) } < 0 {
-            return Err(io::Error::last_os_error())
+            return Err(io::Error::last_os_error());
         }
 
         Ok(Self { fd })
@@ -39,8 +40,9 @@ impl<'a> Queue<'a, true> {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<()> {
         unsafe {
-            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr().cast(), buf.len());
-
+            println!("buf: {:?}", buf);
+            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr() as *const _, buf.len());
+            println!("result: {}", result);
             if result < 0 {
                 return Err(io::Error::last_os_error());
             }
@@ -68,7 +70,7 @@ impl<'a> Queue<'a, false> {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<Poll<()>> {
         unsafe {
-            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr().cast(), buf.len());
+            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr() as *const _, buf.len());
 
             if result < 0 {
                 return Err(io::Error::last_os_error());
