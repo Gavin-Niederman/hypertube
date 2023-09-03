@@ -1,7 +1,6 @@
 use std::{
     ffi::CString,
-    io,
-    mem,
+    io, mem,
     net::IpAddr,
     os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
 };
@@ -57,10 +56,7 @@ impl<const MQ: bool> Device<MQ> {
 
         unsafe {
             for _ in 0..num_queues {
-                let result = libc::open(
-                    b"/dev/net/tun\0".as_ptr().cast(),
-                    libc::O_RDWR,
-                );
+                let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
                 if result < 0 {
                     return Err(io::Error::last_os_error());
                 }
@@ -84,7 +80,7 @@ impl<const MQ: bool> Device<MQ> {
 
         let device = Self { name, queues, ctl };
         device.configure(&config);
-        
+
         Ok(device)
     }
 
@@ -154,17 +150,31 @@ impl<const MQ: bool> Device<MQ> {
     }
 
     pub fn queue(&self, index: usize) -> io::Result<Queue<true>> {
-        Ok(match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
-            Some(queue) => queue?,
-            None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
-        })
+        Ok(
+            match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+                Some(queue) => queue?,
+                None => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "queue {index} not found",
+                    ))
+                }
+            },
+        )
     }
 
     pub fn queue_nonblocking(&self, index: usize) -> io::Result<Queue<false>> {
-        Ok(match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
-            Some(queue) => queue?,
-            None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
-        })
+        Ok(
+            match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+                Some(queue) => queue?,
+                None => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "queue {index} not found",
+                    ))
+                }
+            },
+        )
     }
 
     pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
@@ -204,23 +214,21 @@ fn bytes_to_signed(val: &[u8]) -> &[i8] {
 fn ip_to_sockaddr(addr: IpAddr) -> libc::sockaddr {
     unsafe {
         match addr {
-            IpAddr::V4(addr) => *(&libc::sockaddr_in {
-                sin_family: libc::AF_INET as u16,
-                sin_port: 0,
-                sin_addr: libc::in_addr {
-                    s_addr: u32::from_ne_bytes(addr.octets()),
-                },
-                sin_zero: [0; 8],
-            } as *const libc::sockaddr_in).cast(),
-            
-            //TODO: See if I need to change this
-            IpAddr::V6(addr) => *(&libc::sockaddr_in6 {
-                sin6_family: libc::AF_INET6 as u16,
-                sin6_port: 0,
-                sin6_flowinfo: 0, 
-                sin6_addr: libc::in6_addr { s6_addr: addr.octets() },
-                sin6_scope_id: 0,
-            } as *const libc::sockaddr_in6).cast(),
+            IpAddr::V4(addr) => {
+                let addr = libc::sockaddr_in {
+                    sin_family: libc::AF_INET as u16,
+                    sin_port: 0,
+                    sin_addr: libc::in_addr {
+                        s_addr: u32::from_ne_bytes(addr.octets()),
+                    },
+                    sin_zero: [0; 8],
+                };
+                mem::transmute(addr)
+            }
+
+            IpAddr::V6(_addr) => {
+                todo!()
+            }
         }
     }
 }
