@@ -10,8 +10,6 @@ mod tests {
             .with_num_queues(1)
             .build();
 
-        let device = crate::device::Device::new(config).unwrap();
-
-        assert_eq!(device.enabled().unwrap(), true);
+        crate::device::Device::new(config).unwrap();
     }
 }

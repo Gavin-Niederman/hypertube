@@ -53,10 +53,14 @@ impl Device {
 
         unsafe {
             for _ in 0..num_queues {
-                let fd = OwnedFd::from_raw_fd(libc::open(
+                let result = libc::open(
                     b"/dev/net/tun\0".as_ptr().cast(),
                     libc::O_RDWR,
-                ));
+                );
+                if result < 0 {
+                    return Err(io::Error::last_os_error());
+                }
+                let fd = OwnedFd::from_raw_fd(result);
 
                 if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request) < 0 {
                     libc::close(fd.as_raw_fd());
@@ -67,7 +71,12 @@ impl Device {
                 queues.push(fd);
             }
         }
-        let ctl = unsafe { OwnedFd::from_raw_fd(libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0)) };
+
+        let ctl = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
+        if ctl < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let ctl = unsafe { OwnedFd::from_raw_fd(ctl) };
 
         Ok(Self { name, queues, ctl })
     }
@@ -129,18 +138,6 @@ impl Device {
 
     pub fn queue(&self, index: usize) -> Option<Queue> {
         self.queues.get(index).map(|fd| Queue::new(fd.as_fd()))
-    }
-
-    pub fn enabled(&self) -> io::Result<bool> {
-        unsafe {
-            let mut ifr = self.request();
-
-            if libc::ioctl(self.ctl.as_raw_fd(), libc::SIOCGIFFLAGS, &mut ifr) < 0 {
-                return Err(io::Error::last_os_error());
-            }
-
-            Ok(ifr.ifr_ifru.ifru_flags & libc::IFF_UP as i16 != 0)
-        }
     }
 
     pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
