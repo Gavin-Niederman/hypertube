@@ -1,8 +1,8 @@
 use std::{
-    ffi::CString,
+    ffi::{CString, CStr},
     io, mem,
     net::IpAddr,
-    os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd, RawFd},
 };
 
 use cidr::IpCidr;
@@ -20,13 +20,19 @@ impl Device {
     /// Creates a new Device.
     /// Errors if name is too long.
     pub fn new(config: Config) -> io::Result<Self> {
-        let name = config.name.clone().unwrap_or_default();
-        if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "interface name too long",
-            ));
-        }
+        let name = match config.name.clone() {
+            Some(name) => {
+                if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "interface name too long",
+                    ));
+
+                }
+                Some(name)
+            },
+            None => None,
+        };
 
         let num_queues = config.num_queues.unwrap_or(1);
         if num_queues < 1 {
@@ -40,8 +46,10 @@ impl Device {
         let mut interface_request: libc::ifreq = unsafe { mem::zeroed() };
 
         // Copy the name and leave the rest of the array as 0 (nul)
-        interface_request.ifr_name[..name.as_bytes().len()]
-            .copy_from_slice(bytes_to_signed(name.as_bytes()));
+        if let Some(name) = name {
+            let count = name.as_bytes().len();
+            unsafe { std::ptr::copy_nonoverlapping(name.into_raw(), interface_request.ifr_name.as_mut_ptr(), count) };
+        }
 
         let mut flags = 0;
         flags |= libc::IFF_TUN as i16;
@@ -54,7 +62,7 @@ impl Device {
 
         interface_request.ifr_ifru.ifru_flags = flags;
 
-        unsafe {
+        unsafe { 
             for _ in 0..num_queues {
                 let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
                 if result < 0 {
@@ -62,7 +70,7 @@ impl Device {
                 }
                 let fd = OwnedFd::from_raw_fd(result);
 
-                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request) < 0 {
+                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request as *mut _) < 0 {
                     libc::close(fd.as_raw_fd());
 
                     return Err(io::Error::last_os_error());
@@ -72,13 +80,15 @@ impl Device {
             }
         }
 
+        let name = unsafe { CStr::from_ptr(interface_request.ifr_name.as_ptr()) };
+
         let ctl = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
         if ctl < 0 {
             return Err(io::Error::last_os_error());
         }
         let ctl = unsafe { OwnedFd::from_raw_fd(ctl) };
 
-        let device = Self { name, queues, ctl };
+        let device = Self { name: name.into(), queues, ctl };
         device.configure(&config);
 
         Ok(device)
