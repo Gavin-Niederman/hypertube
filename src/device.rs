@@ -11,16 +11,16 @@ use cidr::IpCidr;
 use crate::{config::Config, queue::Queue};
 
 #[derive(Debug)]
-pub struct Device {
+pub struct Device<const MULTI_QUEUE: bool> {
     name: CString,
     queues: Vec<OwnedFd>,
     ctl: OwnedFd,
 }
 
-impl Device {
+impl<const MQ: bool> Device<MQ> {
     /// Creates a new Device.
     /// Errors if name is too long.
-    pub fn new(config: Config) -> io::Result<Self> {
+    pub fn new(config: Config<MQ>) -> io::Result<Self> {
         let name = config.name.clone().unwrap_or_default();
         if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
             return Err(io::Error::new(
@@ -44,12 +44,16 @@ impl Device {
         interface_request.ifr_name[..name.as_bytes().len()]
             .copy_from_slice(bytes_to_signed(name.as_bytes()));
 
-        interface_request.ifr_ifru.ifru_flags = libc::IFF_TUN as i16
-            | (if num_queues > 1 {
-                libc::IFF_MULTI_QUEUE
-            } else {
-                0
-            } | if config.no_pi { libc::IFF_NO_PI } else { 0 }) as i16; // 0x1001
+        let mut flags = 0;
+        flags |= libc::IFF_TUN as i16;
+        if config.no_pi {
+            flags |= libc::IFF_NO_PI as i16;
+        }
+        if MQ {
+            flags |= libc::IFF_MULTI_QUEUE as i16;
+        }
+
+        interface_request.ifr_ifru.ifru_flags = flags;
 
         unsafe {
             for _ in 0..num_queues {
@@ -84,13 +88,7 @@ impl Device {
         Ok(device)
     }
 
-    fn configure(&self, config: &Config) {
-        for queue in self.queues.iter() {
-            let queue = Queue::new(queue.as_fd());
-
-            queue.set_blocking(config.blocking).unwrap();
-        }
-
+    fn configure(&self, config: &Config<MQ>) {
         if let Some(address) = config.address {
             self.set_address(address).unwrap();
         }
@@ -155,8 +153,24 @@ impl Device {
         Ok(())
     }
 
-    pub fn queue(&self, index: usize) -> Option<Queue> {
-        self.queues.get(index).map(|fd| Queue::new(fd.as_fd()))
+    pub fn queue(&self, index: usize) -> io::Result<Queue<true>> {
+        let queue = match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+            Some(queue) => queue,
+            None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
+        };
+        queue.set_blocking(true)?;
+
+        Ok(queue)
+    }
+
+    pub fn queue_nonblocking(&self, index: usize) -> io::Result<Queue<false>> {
+        let queue = match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
+            Some(queue) => queue,
+            None => return Err(io::Error::new(io::ErrorKind::NotFound, "queue {index} not found")),
+        };
+        queue.set_blocking(false)?;
+
+        Ok(queue)
     }
 
     pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
@@ -178,7 +192,7 @@ impl Device {
     }
 }
 
-impl Drop for Device {
+impl<const MQ: bool> Drop for Device<MQ> {
     fn drop(&mut self) {
         unsafe {
             for queue in &self.queues {

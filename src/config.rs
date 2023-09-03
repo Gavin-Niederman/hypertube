@@ -1,32 +1,30 @@
 use std::ffi::CString;
 
-pub struct Config {
+pub struct Config<const MQ: bool> {
     pub name: Option<CString>,
     pub num_queues: Option<usize>,
     pub no_pi: bool,
-    pub blocking: bool,
     pub address: Option<std::net::IpAddr>,
     pub netmask: Option<cidr::IpCidr>,
 }
 
-impl Default for Config {
+impl<const MQ: bool> Default for Config<MQ> {
     fn default() -> Self {
         Self {
             name: None,
-            num_queues: None,
+            num_queues: if MQ {None} else {Some(1)},
             no_pi: true,
-            blocking: true,
             address: None,
             netmask: None,
         }
     }
 }
 
-pub struct ConfigBuilder {
-    config: Config,
+pub struct ConfigBuilder<const MQ: bool> {
+    config: Config<MQ>,
 }
 
-impl ConfigBuilder {
+impl<const MQ: bool> ConfigBuilder<MQ> {
     pub fn new() -> Self {
         Self {
             config: Config::default(),
@@ -38,18 +36,8 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn with_num_queues(mut self, num_queues: usize) -> Self {
-        self.config.num_queues = Some(num_queues);
-        self
-    }
-
     pub fn with_pi(mut self, pi: bool) -> Self {
         self.config.no_pi = !pi;
-        self
-    }
-
-    pub fn with_blocking(mut self, blocking: bool) -> Self {
-        self.config.blocking = blocking;
         self
     }
 
@@ -63,7 +51,20 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn build(self) -> Config {
+    pub fn build(self) -> Config<MQ> {
         self.config
+    }
+}
+
+impl ConfigBuilder<true> {
+    pub fn with_num_queues(mut self, num_queues: usize) -> Self {
+        if num_queues < 2 {
+            panic!(
+                "number of queues must be at least 2 when using multi-queue mode
+                Use ConfigBuilder<false> for single-queue mode"
+            )
+        }
+        self.config.num_queues = Some(num_queues);
+        self
     }
 }
