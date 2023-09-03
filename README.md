@@ -6,3 +6,4 @@ Hypertube is meant to be a replacement for [tun](https://crates.io/crates/tun) t
 ## Todo
 * [ ] Documentation
 * [X] Non blocking queues
+* [ ] IPV6 support

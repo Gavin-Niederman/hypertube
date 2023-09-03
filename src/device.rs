@@ -10,16 +10,16 @@ use cidr::IpCidr;
 use crate::{config::Config, queue::Queue};
 
 #[derive(Debug)]
-pub struct Device<const MULTI_QUEUE: bool> {
+pub struct Device {
     name: CString,
     queues: Vec<OwnedFd>,
     ctl: OwnedFd,
 }
 
-impl<const MQ: bool> Device<MQ> {
+impl Device {
     /// Creates a new Device.
     /// Errors if name is too long.
-    pub fn new(config: Config<MQ>) -> io::Result<Self> {
+    pub fn new(config: Config) -> io::Result<Self> {
         let name = config.name.clone().unwrap_or_default();
         if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
             return Err(io::Error::new(
@@ -48,7 +48,7 @@ impl<const MQ: bool> Device<MQ> {
         if config.no_pi {
             flags |= libc::IFF_NO_PI as i16;
         }
-        if MQ {
+        if config.multi_queue {
             flags |= libc::IFF_MULTI_QUEUE as i16;
         }
 
@@ -84,7 +84,7 @@ impl<const MQ: bool> Device<MQ> {
         Ok(device)
     }
 
-    fn configure(&self, config: &Config<MQ>) {
+    fn configure(&self, config: &Config) {
         if let Some(address) = config.address {
             self.set_address(address).unwrap();
         }
@@ -196,7 +196,7 @@ impl<const MQ: bool> Device<MQ> {
     }
 }
 
-impl<const MQ: bool> Drop for Device<MQ> {
+impl Drop for Device {
     fn drop(&mut self) {
         unsafe {
             for queue in &self.queues {

@@ -1,18 +1,35 @@
 use std::ffi::CString;
 
-pub struct Config<const MQ: bool> {
+pub struct Config {
     pub name: Option<CString>,
     pub num_queues: Option<usize>,
+    pub(crate) multi_queue: bool,
     pub no_pi: bool,
     pub address: Option<std::net::IpAddr>,
     pub netmask: Option<cidr::IpCidr>,
 }
 
-impl<const MQ: bool> Default for Config<MQ> {
+impl Config {
+    /// Creates a new Config.
+    /// It is reccommended to use ConfigBuilder instead.
+    pub fn new(name: Option<CString>, num_queues: Option<usize>, no_pi: bool, address: Option<std::net::IpAddr>, netmask: Option<cidr::IpCidr>) -> Self {
+        Self {
+            name,
+            num_queues,
+            multi_queue: num_queues.unwrap_or(1) > 1,
+            no_pi,
+            address,
+            netmask,
+        }
+    }
+}
+
+impl Default for Config {
     fn default() -> Self {
         Self {
             name: None,
-            num_queues: if MQ {None} else {Some(1)},
+            num_queues: None,
+            multi_queue: false,
             no_pi: true,
             address: None,
             netmask: None,
@@ -20,11 +37,11 @@ impl<const MQ: bool> Default for Config<MQ> {
     }
 }
 
-pub struct ConfigBuilder<const MQ: bool> {
-    config: Config<MQ>,
+pub struct ConfigBuilder {
+    config: Config,
 }
 
-impl<const MQ: bool> ConfigBuilder<MQ> {
+impl ConfigBuilder {
     pub fn new() -> Self {
         Self {
             config: Config::default(),
@@ -51,20 +68,16 @@ impl<const MQ: bool> ConfigBuilder<MQ> {
         self
     }
 
-    pub fn build(self) -> Config<MQ> {
+    pub fn build(self) -> Config {
         self.config
     }
-}
 
-impl ConfigBuilder<true> {
     pub fn with_num_queues(mut self, num_queues: usize) -> Self {
-        if num_queues < 2 {
-            panic!(
-                "number of queues must be at least 2 when using multi-queue mode
-                Use ConfigBuilder<false> for single-queue mode"
-            )
+        if num_queues < 1 {
+            panic!("number of queues must be at least 1")
         }
         self.config.num_queues = Some(num_queues);
+        self.config.multi_queue = if num_queues > 1 { true } else { false };
         self
     }
 }
