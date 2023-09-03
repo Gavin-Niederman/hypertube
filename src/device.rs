@@ -204,15 +204,23 @@ fn bytes_to_signed(val: &[u8]) -> &[i8] {
 fn ip_to_sockaddr(addr: IpAddr) -> libc::sockaddr {
     unsafe {
         match addr {
-            IpAddr::V4(addr) => mem::transmute(libc::sockaddr_in {
+            IpAddr::V4(addr) => *(&libc::sockaddr_in {
                 sin_family: libc::AF_INET as u16,
                 sin_port: 0,
                 sin_addr: libc::in_addr {
                     s_addr: u32::from_ne_bytes(addr.octets()),
                 },
                 sin_zero: [0; 8],
-            }),
-            IpAddr::V6(addr) => todo!(),
+            } as *const libc::sockaddr_in).cast(),
+            
+            //TODO: See if I need to change this
+            IpAddr::V6(addr) => *(&libc::sockaddr_in6 {
+                sin6_family: libc::AF_INET6 as u16,
+                sin6_port: 0,
+                sin6_flowinfo: 0, 
+                sin6_addr: libc::in6_addr { s6_addr: addr.octets() },
+                sin6_scope_id: 0,
+            } as *const libc::sockaddr_in6).cast(),
         }
     }
 }
