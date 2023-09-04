@@ -1,6 +1,6 @@
 [package]
 name = "hypertube"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 description = "Hypertube is a library for the creation and usage of TUN devices."
 license = "MIT"
