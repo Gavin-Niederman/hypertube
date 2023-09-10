@@ -2,7 +2,7 @@ use std::ffi::CString;
 
 use crate::Device;
 
-pub struct DeviceBuilder {
+pub(crate) struct Config {
     pub name: Option<CString>,
     pub num_queues: Option<usize>,
     pub(crate) multi_queue: Option<bool>,
@@ -12,36 +12,42 @@ pub struct DeviceBuilder {
     pub up: bool,
 }
 
+pub struct DeviceBuilder {
+    config: Config,
+}
+
 impl DeviceBuilder {
     pub fn new() -> Self {
         Self {
-            name: None,
-            num_queues: None,
-            multi_queue: None,
-            no_pi: true,
-            address: None,
-            netmask: None,
-            up: true,
+            config: Config {
+                name: None,
+                num_queues: None,
+                multi_queue: None,
+                no_pi: true,
+                address: None,
+                netmask: None,
+                up: true,
+            }
         }
     }
 
     pub fn with_name(mut self, name: CString) -> Self {
-        self.name = Some(name);
+        self.config.name = Some(name);
         self
     }
 
     pub fn with_pi(mut self, pi: bool) -> Self {
-        self.no_pi = !pi;
+        self.config.no_pi = !pi;
         self
     }
 
     pub fn with_address(mut self, address: std::net::IpAddr) -> Self {
-        self.address = Some(address);
+        self.config.address = Some(address);
         self
     }
 
     pub fn with_netmask(mut self, netmask: cidr::IpCidr) -> Self {
-        self.netmask = Some(netmask);
+        self.config.netmask = Some(netmask);
         self
     }
 
@@ -49,8 +55,8 @@ impl DeviceBuilder {
         if num_queues < 1 {
             panic!("number of queues must be at least 1")
         }
-        self.num_queues = Some(num_queues);
-        self.multi_queue = if num_queues > 1 {
+        self.config.num_queues = Some(num_queues);
+        self.config.multi_queue = if num_queues > 1 {
             Some(true)
         } else {
             Some(false)
@@ -59,11 +65,11 @@ impl DeviceBuilder {
     }
 
     pub fn with_up(mut self, up: bool) -> Self {
-        self.up = up;
+        self.config.up = up;
         self
     }
 
     pub fn build(self) -> std::io::Result<Device> {
-        Device::new(self)
+        Device::new(self.config)
     }
 }

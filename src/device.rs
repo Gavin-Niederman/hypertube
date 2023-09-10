@@ -7,7 +7,7 @@ use std::{
 
 use cidr::IpCidr;
 
-use crate::{builder::DeviceBuilder, queue::Queue};
+use crate::{builder::Config, queue::Queue};
 
 #[derive(Debug)]
 pub struct Device {
@@ -16,10 +16,9 @@ pub struct Device {
     ctl: OwnedFd,
 }
 
-type Config = DeviceBuilder;
-
 impl Device {
-    /// This function is private. Use [`DeviceBuilder`](crate::builder::DeviceBuilder) to create a new device.
+    /// This function is private.
+    /// Use [`DeviceBuilder`](crate::builder::DeviceBuilder) to create a new device.
     pub(crate) fn new(config: Config) -> io::Result<Self> {
         let name = match config.name.clone() {
             Some(name) => {
