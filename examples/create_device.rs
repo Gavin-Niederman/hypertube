@@ -21,7 +21,9 @@ fn main() {
     scope(|s| {
         s.spawn(move || {
             for _ in 0..5 {
-                let mut buf = [0; 4096];
+                let mut buf = [
+                    0x45, 0x00, 0x00, 0x90, 0x7D, 0x99, 0x40, 0x00, 0x40, 0x11, 0xA6, 0xC1, 0x0A, 0x00, 0x01, 0x02, 0x0A, 0x00, 0x01, 0x01,
+                ];
                 let poll = thread_queue.write(&mut buf).unwrap();
                 println!("{:?}", poll);
             }

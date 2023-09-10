@@ -1,6 +1,6 @@
 use std::{
     io,
-    os::fd::{AsRawFd, BorrowedFd},
+    os::fd::{AsRawFd, BorrowedFd, RawFd},
     task::Poll,
 };
 
@@ -26,28 +26,35 @@ impl<'a, const BLOCKING: bool> Queue<'a, BLOCKING> {
     }
 }
 
+unsafe fn read(fd: RawFd, buf: &mut [u8]) -> io::Result<usize> {
+    let len = libc::read(fd, buf.as_mut_ptr().cast(), buf.len());
+    if len < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    Ok(len as usize)
+    
+}
+
+unsafe fn write(fd: RawFd, buf: &[u8]) -> io::Result<()> {
+    let result = libc::write(fd, buf.as_ptr().cast(), buf.len());
+    if result < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    Ok(())
+}
+
 impl<'a> Queue<'a, true> {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
-            let len = libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len());
-            if len < 0 {
-                return Err(io::Error::last_os_error());
-            }
-
-            Ok(len as usize)
+            read(self.fd.as_raw_fd(), buf)
         }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<()> {
         unsafe {
-            println!("buf: {:?}", buf);
-            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr() as *const _, buf.len());
-            println!("result: {}", result);
-            if result < 0 {
-                return Err(io::Error::last_os_error());
-            }
-
-            Ok(())
+            write(self.fd.as_raw_fd(), buf)
         }
     }
 }
@@ -55,28 +62,21 @@ impl<'a> Queue<'a, true> {
 impl<'a> Queue<'a, false> {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<Poll<usize>> {
         unsafe {
-            let len = libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len());
-            if len < 0 {
-                let error = io::Error::last_os_error();
-                match error.raw_os_error().unwrap_or(0) {
-                    libc::EWOULDBLOCK => return Ok(Poll::Pending),
-                    _ => return Err(error),
-                }
+            match read(self.fd.as_raw_fd(), buf) {
+                Ok(len) => Ok(Poll::Ready(len as usize)),
+                Err(err) if err.kind() == io::ErrorKind::WouldBlock => Ok(Poll::Pending),
+                Err(err) => Err(err),
             }
-
-            Ok(Poll::Ready(len as usize))
         }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<Poll<()>> {
         unsafe {
-            let result = libc::write(self.fd.as_raw_fd(), buf.as_ptr() as *const _, buf.len());
-
-            if result < 0 {
-                return Err(io::Error::last_os_error());
+            match write(self.fd.as_raw_fd(), buf) {
+                Ok(()) => Ok(Poll::Ready(())),
+                Err(err) if err.kind() == io::ErrorKind::WouldBlock => Ok(Poll::Pending),
+                Err(err) => Err(err),
             }
-
-            Ok(Poll::Ready(()))
         }
     }
 }
