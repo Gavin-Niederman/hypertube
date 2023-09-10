@@ -140,35 +140,6 @@ impl Device {
         req
     }
 
-    /// Creates a queue and returns the index it was placed at.
-    pub fn create_queue(&mut self) -> io::Result<usize> {
-        let mut flags = libc::IFF_MULTI_QUEUE as i16;
-        flags |= libc::IFF_TUN as i16;
-        if self.no_pi {
-            flags |= libc::IFF_NO_PI as i16;
-        }
-
-        unsafe {
-            let mut interface_request = self.request();
-            interface_request.ifr_ifru.ifru_flags = flags;
-
-            let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
-            if result < 0 {
-                return Err(io::Error::last_os_error());
-            }
-            let fd = OwnedFd::from_raw_fd(result);
-
-            if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request as *mut _) < 0 {
-                libc::close(fd.as_raw_fd());
-
-                return Err(io::Error::last_os_error());
-            }
-
-            self.queues.push(fd);
-        }
-
-        Ok(self.queues.len() - 1)
-    }
 
     /// Enables (brings up) the device.
     pub fn bring_up(&self) -> io::Result<()> {
@@ -214,6 +185,58 @@ impl Device {
             if libc::ioctl(self.ctl.as_raw_fd(), libc::SIOCSIFNETMASK, &ifr) < 0 {
                 return Err(io::Error::last_os_error());
             }
+        }
+
+        Ok(())
+    }
+
+    /// Creates a queue and returns the index it was placed at.
+    /// This doesn't need to be called if the device already has the queue you need.
+    pub fn create_queue(&mut self) -> io::Result<usize> {
+        let mut flags = libc::IFF_MULTI_QUEUE as i16;
+        flags |= libc::IFF_TUN as i16;
+        if self.no_pi {
+            flags |= libc::IFF_NO_PI as i16;
+        }
+
+        unsafe {
+            let mut interface_request = self.request();
+            interface_request.ifr_ifru.ifru_flags = flags;
+
+            let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
+            if result < 0 {
+                return Err(io::Error::last_os_error());
+            }
+            let fd = OwnedFd::from_raw_fd(result);
+
+            if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request as *mut _) < 0 {
+                libc::close(fd.as_raw_fd());
+
+                return Err(io::Error::last_os_error());
+            }
+
+            self.queues.push(fd);
+        }
+
+        Ok(self.queues.len() - 1)
+    }
+
+    /// Close a queue at the given index
+    /// Do not call if you are using the queue in another thread as this will invalidate the file descriptor.
+    pub fn close_queue(&mut self, index: usize) -> io::Result<()> {
+        if index >= self.queues.len() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "queue at index {index} not found",
+            ));
+        }
+        
+        let fd = self.queues.remove(index);
+
+        unsafe {
+            if libc::close(fd.as_raw_fd()) < 0 {
+                return Err(io::Error::last_os_error());
+            };
         }
 
         Ok(())

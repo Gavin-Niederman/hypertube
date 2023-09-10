@@ -19,10 +19,12 @@ fn main() {
     println!("{:?}", new_queue_index);
     let new_queue = device.queue(new_queue_index).unwrap();
     println!("{:?}", new_queue);
+    device.close_queue(new_queue_index).unwrap();
 
     let queue = device.queue(0).unwrap();
 
     let thread_queue = device.queue_nonblocking(1).unwrap();
+
     scope(|s| {
         s.spawn(move || {
             for _ in 0..5 {
@@ -37,7 +39,6 @@ fn main() {
 
         for _ in 0..5 {
             let mut buf = [0; 4096];
-            new_queue.read(&mut buf).unwrap();
             let amount = queue.read(&mut buf).unwrap();
             println!("{:?}", &buf[0..amount]);
         }
