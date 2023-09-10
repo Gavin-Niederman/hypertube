@@ -28,6 +28,10 @@ impl Config {
             netmask,
         }
     }
+
+    pub fn builder() -> ConfigBuilder {
+        ConfigBuilder::new()
+    }
 }
 
 impl Default for Config {
