@@ -1,3 +1,6 @@
+//! Queue implementation for [`Devices`](crate::Device).
+//! Used to read and write packets to said [`Devices`](crate::Device).
+
 use std::{
     io,
     os::fd::{AsRawFd, BorrowedFd, RawFd},
@@ -63,7 +66,7 @@ impl<'a> Queue<'a, true> {
 
 impl<'a> Queue<'a, false> {
     /// Read a packet from the queue.
-    /// Returns [`Poll::Pending`](core::task::Poll::Pending) if no packet is available yet.
+    /// Returns [`Poll::Pending`] if no packet is available yet.
     pub fn read(&self, buf: &mut [u8]) -> io::Result<Poll<usize>> {
         unsafe {
             match read(self.fd.as_raw_fd(), buf) {
@@ -75,7 +78,7 @@ impl<'a> Queue<'a, false> {
     }
 
     /// Write a packet to the queue.
-    /// Returns [`Poll::Pending`](core::task::Poll::Pending) if the has not been written yet.
+    /// Returns [`Poll::Pending`] if the has not been written yet.
     pub fn write(&self, buf: &[u8]) -> io::Result<Poll<()>> {
         unsafe {
             match write(self.fd.as_raw_fd(), buf) {

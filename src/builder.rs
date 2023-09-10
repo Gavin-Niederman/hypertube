@@ -1,3 +1,5 @@
+//! Builder for [`Device`]
+
 use std::ffi::CString;
 
 use crate::Device;
@@ -12,7 +14,7 @@ pub(crate) struct Config {
     pub up: bool,
 }
 
-/// A builder for [`Device`](crate::Device)
+/// A builder for [`Device`]
 pub struct DeviceBuilder {
     config: Config,
 }
@@ -59,7 +61,7 @@ impl DeviceBuilder {
     /// ## Panics
     /// This function will panic if `num_queues` is less than 1.
     /// ### Note
-    /// There is no way to increase the number of queues a [`Device`](crate::Device) has after it has been created yet.
+    /// There is no way to increase the number of queues a [`Device`] has after it has been created yet.
     /// This should be fixed in the future.
     pub fn with_num_queues(mut self, num_queues: usize) -> Self {
         if num_queues < 1 {
@@ -74,13 +76,13 @@ impl DeviceBuilder {
         self
     }
 
-    /// Sets whether the [`Device`](crate::Device) should be up on creation or not.
+    /// Sets whether the [`Device`] should be up on creation or not.
     pub fn with_up(mut self, up: bool) -> Self {
         self.config.up = up;
         self
     }
 
-    /// Builds the [`Device`](crate::Device).
+    /// Builds the [`Device`].
     pub fn build(self) -> std::io::Result<Device> {
         Device::new(self.config)
     }

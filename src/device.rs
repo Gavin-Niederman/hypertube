@@ -1,3 +1,7 @@
+//! Main TUN device implementation.
+//! Does not include the code for writing to and reading from the TUN device.
+//! For that go to [`queue`](mod@crate::queue).
+
 use std::{
     ffi::{CStr, CString},
     io, mem,
@@ -13,7 +17,7 @@ use crate::{
 };
 
 /// A TUN Device.
-/// Create with [`DeviceBuilder`](crate::builder::DeviceBuilder)
+/// Create with [`DeviceBuilder`]
 #[derive(Debug)]
 pub struct Device {
     name: CString,
@@ -23,7 +27,7 @@ pub struct Device {
 
 impl Device {
     /// This function is private.
-    /// Use [`DeviceBuilder`](crate::builder::DeviceBuilder) to create a new device.
+    /// Use [`DeviceBuilder`] to create a new device.
     pub(crate) fn new(config: Config) -> io::Result<Self> {
         let name = match config.name.clone() {
             Some(name) => {
@@ -182,7 +186,7 @@ impl Device {
         Ok(())
     }
 
-    /// Gets a *blocking* queue from the device
+    /// Gets a **blocking** queue from the device
     /// Errors if there is no queue at the given index
     pub fn queue(&self, index: usize) -> io::Result<Queue<true>> {
         Ok(
@@ -216,7 +220,7 @@ impl Device {
 
     /// Creates a new DeviceBuilder
     /// This is one of many ways to get a DeviceBuilder including:
-    /// * [`builder()`](crate::builder)
+    /// * [`builder()`](crate::builder())
     /// * [`DeviceBuilder::new()`/`DeviceBuilder::default()`](crate::builder::DeviceBuilder)
     pub fn builder() -> DeviceBuilder {
         Default::default()
