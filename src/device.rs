@@ -2,7 +2,7 @@ use std::{
     ffi::{CStr, CString},
     io, mem,
     net::IpAddr,
-    os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd, RawFd},
+    os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
 };
 
 use cidr::IpCidr;

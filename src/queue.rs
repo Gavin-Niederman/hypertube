@@ -33,7 +33,6 @@ unsafe fn read(fd: RawFd, buf: &mut [u8]) -> io::Result<usize> {
     }
 
     Ok(len as usize)
-    
 }
 
 unsafe fn write(fd: RawFd, buf: &[u8]) -> io::Result<()> {
@@ -47,15 +46,11 @@ unsafe fn write(fd: RawFd, buf: &[u8]) -> io::Result<()> {
 
 impl<'a> Queue<'a, true> {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        unsafe {
-            read(self.fd.as_raw_fd(), buf)
-        }
+        unsafe { read(self.fd.as_raw_fd(), buf) }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<()> {
-        unsafe {
-            write(self.fd.as_raw_fd(), buf)
-        }
+        unsafe { write(self.fd.as_raw_fd(), buf) }
     }
 }
 
