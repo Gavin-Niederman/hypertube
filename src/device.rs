@@ -23,6 +23,7 @@ pub struct Device {
     name: CString,
     queues: Vec<OwnedFd>,
     ctl: OwnedFd,
+    no_pi: bool,
 }
 
 impl Device {
@@ -51,7 +52,8 @@ impl Device {
         }
         let mut queues = Vec::new();
 
-        let mut interface_request: libc::ifreq = unsafe { mem::zeroed() };
+        // Create a new empty interface request
+        let mut ifr: libc::ifreq = unsafe { mem::zeroed() };
 
         // Copy the name and leave the rest of the array as 0 (nul)
         if let Some(name) = name {
@@ -59,7 +61,7 @@ impl Device {
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     name.into_raw(),
-                    interface_request.ifr_name.as_mut_ptr(),
+                    ifr.ifr_name.as_mut_ptr(),
                     count,
                 )
             };
@@ -74,7 +76,7 @@ impl Device {
             flags |= libc::IFF_MULTI_QUEUE as i16;
         }
 
-        interface_request.ifr_ifru.ifru_flags = flags;
+        ifr.ifr_ifru.ifru_flags = flags;
 
         unsafe {
             for _ in 0..num_queues {
@@ -84,7 +86,7 @@ impl Device {
                 }
                 let fd = OwnedFd::from_raw_fd(result);
 
-                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request as *mut _) < 0 {
+                if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut ifr as *mut _) < 0 {
                     libc::close(fd.as_raw_fd());
 
                     return Err(io::Error::last_os_error());
@@ -94,7 +96,7 @@ impl Device {
             }
         }
 
-        let name = unsafe { CStr::from_ptr(interface_request.ifr_name.as_ptr()) };
+        let name = unsafe { CStr::from_ptr(ifr.ifr_name.as_ptr()) };
 
         let ctl = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
         if ctl < 0 {
@@ -106,6 +108,7 @@ impl Device {
             name: name.into(),
             queues,
             ctl,
+            no_pi: config.no_pi,
         };
         device.configure(&config)?;
 
@@ -135,6 +138,36 @@ impl Device {
             .copy_from_slice(bytes_to_signed(self.name.as_bytes()));
 
         req
+    }
+
+    /// Creates a queue and returns the index it was placed at.
+    pub fn create_queue(&mut self) -> io::Result<usize> {
+        let mut flags = libc::IFF_MULTI_QUEUE as i16;
+        flags |= libc::IFF_TUN as i16;
+        if self.no_pi {
+            flags |= libc::IFF_NO_PI as i16;
+        }
+
+        unsafe {
+            let mut interface_request = self.request();
+            interface_request.ifr_ifru.ifru_flags = flags;
+
+            let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
+            if result < 0 {
+                return Err(io::Error::last_os_error());
+            }
+            let fd = OwnedFd::from_raw_fd(result);
+
+            if libc::ioctl(fd.as_raw_fd(), TUNSETIFF, &mut interface_request as *mut _) < 0 {
+                libc::close(fd.as_raw_fd());
+
+                return Err(io::Error::last_os_error());
+            }
+
+            self.queues.push(fd);
+        }
+
+        Ok(self.queues.len() - 1)
     }
 
     /// Enables (brings up) the device.

@@ -4,7 +4,8 @@ Hypertube is a library for the creation and usage of TUN devices.
 Hypertube is meant to be a replacement for [tun](https://crates.io/crates/tun) that aims to improve the cli and allow for writing to and reading from multiple queues at the same time.
 
 ### Hypertube is not a perfect replacement for tun
-Hypertube is not currently cross-platform, but I plan for it to be in the future.
+The Hypertube API is similar to tun but not completely the same.
+Also Hypertube is not currently cross-platform like tun, but I plan for it to be in the future.
 
 ## Usage
 To create a TUN device, use a `DeviceBuilder`.
@@ -42,7 +43,7 @@ queue1.read(&mut buf);
 ```
 Blocking and nonblocking queues are accessed from the same pool of queues.
 The pool of queues is created when the device is built.
-In the future, the ability to add or remove queues after the `Device` is created should be added.
+You can add to the pool of queues by calling `Device.create_queue()` which will return the index of the new queue for easy accesess.
 
 
 ## Todo

@@ -3,7 +3,7 @@ use std::{net::Ipv4Addr, thread::scope};
 use cidr::Ipv4Cidr;
 
 fn main() {
-    let device = hypertube::builder()
+    let mut device = hypertube::builder()
         .with_num_queues(2)
         .with_address(std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 1)))
         .with_netmask(cidr::IpCidr::V4(
@@ -14,6 +14,11 @@ fn main() {
         .unwrap();
 
     println!("{:?}", device);
+    
+    let new_queue_index = device.create_queue().unwrap();
+    println!("{:?}", new_queue_index);
+    let new_queue = device.queue(new_queue_index).unwrap();
+    println!("{:?}", new_queue);
 
     let queue = device.queue(0).unwrap();
 
@@ -32,6 +37,7 @@ fn main() {
 
         for _ in 0..5 {
             let mut buf = [0; 4096];
+            new_queue.read(&mut buf).unwrap();
             let amount = queue.read(&mut buf).unwrap();
             println!("{:?}", &buf[0..amount]);
         }
