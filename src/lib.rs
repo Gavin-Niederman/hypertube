@@ -2,6 +2,13 @@ pub mod config;
 pub mod device;
 pub mod queue;
 
+pub use device::Device;
+pub use queue::Queue;
+
+pub fn config() -> config::ConfigBuilder {
+    config::ConfigBuilder::new()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
