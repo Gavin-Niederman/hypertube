@@ -3,17 +3,17 @@ use std::{net::Ipv4Addr, thread::scope};
 use cidr::Ipv4Cidr;
 
 fn main() {
-    let config = hypertube::config::ConfigBuilder::new()
+    let device = hypertube::builder()
         .with_num_queues(2)
         .with_address(std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 1)))
         .with_netmask(cidr::IpCidr::V4(
             Ipv4Cidr::new(Ipv4Addr::new(10, 0, 0, 0), 24).unwrap(),
         ))
-        .build();
+        .with_up(true)
+        .build()
+        .unwrap();
 
-    let device = hypertube::device::Device::new(config).unwrap();
     println!("{:?}", device);
-    device.bring_up().unwrap();
 
     let queue = device.queue(0).unwrap();
 

@@ -7,7 +7,7 @@ use std::{
 
 use cidr::IpCidr;
 
-use crate::{config::Config, queue::Queue};
+use crate::{builder::DeviceBuilder, queue::Queue};
 
 #[derive(Debug)]
 pub struct Device {
@@ -16,10 +16,11 @@ pub struct Device {
     ctl: OwnedFd,
 }
 
+type Config = DeviceBuilder;
+
 impl Device {
-    /// Creates a new Device.
-    /// Errors if name is too long.
-    pub fn new(config: Config) -> io::Result<Self> {
+    /// This function is private. Use [`DeviceBuilder`](crate::builder::DeviceBuilder) to create a new device.
+    pub(crate) fn new(config: Config) -> io::Result<Self> {
         let name = match config.name.clone() {
             Some(name) => {
                 if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
@@ -61,7 +62,7 @@ impl Device {
         if config.no_pi {
             flags |= libc::IFF_NO_PI as i16;
         }
-        if config.multi_queue {
+        if config.multi_queue.unwrap_or(false) {
             flags |= libc::IFF_MULTI_QUEUE as i16;
         }
 
@@ -98,19 +99,25 @@ impl Device {
             queues,
             ctl,
         };
-        device.configure(&config);
+        device.configure(&config)?;
 
         Ok(device)
     }
 
-    fn configure(&self, config: &Config) {
+    fn configure(&self, config: &Config) -> io::Result<()> {
         if let Some(address) = config.address {
-            self.set_address(address).unwrap();
+            self.set_address(address)?;
         }
 
         if let Some(netmask) = config.netmask {
-            self.set_netmask(netmask).unwrap();
+            self.set_netmask(netmask)?;
         }
+
+        if config.up {
+            self.bring_up()?;
+        }
+
+        Ok(())
     }
 
     unsafe fn request(&self) -> libc::ifreq {
