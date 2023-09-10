@@ -5,6 +5,7 @@ pub mod queue;
 pub use device::Device;
 pub use queue::Queue;
 
+/// Creates a new DeviceBuilder
 pub fn builder() -> builder::DeviceBuilder {
     builder::DeviceBuilder::new()
 }

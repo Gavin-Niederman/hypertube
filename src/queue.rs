@@ -4,6 +4,9 @@ use std::{
     task::Poll,
 };
 
+/// A queue for a TUN device.
+/// Used to read and write packets to said TUN device.
+/// Const generic `BLOCKING` determines whether or not the queue blocks on reads and writes.
 #[derive(Debug)]
 pub struct Queue<'a, const BLOCKING: bool> {
     fd: BorrowedFd<'a>,
@@ -45,16 +48,22 @@ unsafe fn write(fd: RawFd, buf: &[u8]) -> io::Result<()> {
 }
 
 impl<'a> Queue<'a, true> {
+    /// Read a packet from the queue.
+    /// Blocks until a packet is available.
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe { read(self.fd.as_raw_fd(), buf) }
     }
 
+    /// Write a packet to the queue.
+    /// Blocks until the packet is written.
     pub fn write(&self, buf: &[u8]) -> io::Result<()> {
         unsafe { write(self.fd.as_raw_fd(), buf) }
     }
 }
 
 impl<'a> Queue<'a, false> {
+    /// Read a packet from the queue.
+    /// Returns [`Poll::Pending`](core::task::Poll::Pending) if no packet is available yet.
     pub fn read(&self, buf: &mut [u8]) -> io::Result<Poll<usize>> {
         unsafe {
             match read(self.fd.as_raw_fd(), buf) {
@@ -65,6 +74,8 @@ impl<'a> Queue<'a, false> {
         }
     }
 
+    /// Write a packet to the queue.
+    /// Returns [`Poll::Pending`](core::task::Poll::Pending) if the has not been written yet.
     pub fn write(&self, buf: &[u8]) -> io::Result<Poll<()>> {
         unsafe {
             match write(self.fd.as_raw_fd(), buf) {

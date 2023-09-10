@@ -12,11 +12,13 @@ pub(crate) struct Config {
     pub up: bool,
 }
 
+/// A builder for [`Device`](crate::Device)
 pub struct DeviceBuilder {
     config: Config,
 }
 
 impl DeviceBuilder {
+    /// Creates a new builder.
     pub fn new() -> Self {
         Self {
             config: Config {
@@ -36,6 +38,7 @@ impl DeviceBuilder {
         self
     }
 
+    /// Sets whether or not the device should have a packet information header.
     pub fn with_pi(mut self, pi: bool) -> Self {
         self.config.no_pi = !pi;
         self
@@ -51,6 +54,13 @@ impl DeviceBuilder {
         self
     }
 
+    /// Set the number of queues the device should have.
+    /// If this is not set, the device will have 1 queue.
+    /// ## Panics
+    /// This function will panic if `num_queues` is less than 1.
+    /// ### Note
+    /// There is no way to increase the number of queues a [`Device`](crate::Device) has after it has been created yet.
+    /// This should be fixed in the future.
     pub fn with_num_queues(mut self, num_queues: usize) -> Self {
         if num_queues < 1 {
             panic!("number of queues must be at least 1")
@@ -64,11 +74,13 @@ impl DeviceBuilder {
         self
     }
 
+    /// Sets whether the [`Device`](crate::Device) should be up on creation or not.
     pub fn with_up(mut self, up: bool) -> Self {
         self.config.up = up;
         self
     }
 
+    /// Builds the [`Device`](crate::Device).
     pub fn build(self) -> std::io::Result<Device> {
         Device::new(self.config)
     }

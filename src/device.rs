@@ -12,6 +12,8 @@ use crate::{
     queue::Queue,
 };
 
+/// A TUN Device.
+/// Create with [`DeviceBuilder`](crate::builder::DeviceBuilder)
 #[derive(Debug)]
 pub struct Device {
     name: CString,
@@ -131,6 +133,7 @@ impl Device {
         req
     }
 
+    /// Enables (brings up) the device.
     pub fn bring_up(&self) -> io::Result<()> {
         unsafe {
             let mut ifr = self.request();
@@ -149,6 +152,7 @@ impl Device {
         }
     }
 
+    /// Sets the destination address of the device.
     pub fn set_address(&self, address: IpAddr) -> io::Result<()> {
         let mut ifr = unsafe { self.request() };
 
@@ -163,6 +167,7 @@ impl Device {
         Ok(())
     }
 
+    /// Sets the netmask of the device.
     pub fn set_netmask(&self, network: IpCidr) -> io::Result<()> {
         let mut ifr = unsafe { self.request() };
 
@@ -177,6 +182,8 @@ impl Device {
         Ok(())
     }
 
+    /// Gets a *blocking* queue from the device
+    /// Errors if there is no queue at the given index
     pub fn queue(&self, index: usize) -> io::Result<Queue<true>> {
         Ok(
             match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
@@ -191,6 +198,8 @@ impl Device {
         )
     }
 
+    /// Gets a nonblocking queue from the device
+    /// Errors if there is no queue at the given index
     pub fn queue_nonblocking(&self, index: usize) -> io::Result<Queue<false>> {
         Ok(
             match self.queues.get(index).map(|fd| Queue::new(fd.as_fd())) {
@@ -205,24 +214,10 @@ impl Device {
         )
     }
 
-    pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
-        unsafe {
-            let mut ifr = self.request();
-
-            if enabled {
-                ifr.ifr_ifru.ifru_flags |= (libc::IFF_UP | libc::IFF_RUNNING) as i16;
-            } else {
-                ifr.ifr_ifru.ifru_flags &= !(libc::IFF_UP as i16);
-            }
-
-            if libc::ioctl(self.ctl.as_raw_fd(), libc::SIOCSIFFLAGS, &ifr) < 0 {
-                return Err(io::Error::last_os_error());
-            }
-
-            Ok(())
-        }
-    }
-
+    /// Creates a new DeviceBuilder
+    /// This is one of many ways to get a DeviceBuilder including:
+    /// * [`builder()`](crate::builder)
+    /// * [`DeviceBuilder::new()`/`DeviceBuilder::default()`](crate::builder::DeviceBuilder)
     pub fn builder() -> DeviceBuilder {
         Default::default()
     }
