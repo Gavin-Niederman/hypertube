@@ -7,7 +7,10 @@ use std::{
 
 use cidr::IpCidr;
 
-use crate::{builder::Config, queue::Queue};
+use crate::{
+    builder::{Config, DeviceBuilder},
+    queue::Queue,
+};
 
 #[derive(Debug)]
 pub struct Device {
@@ -218,6 +221,10 @@ impl Device {
 
             Ok(())
         }
+    }
+
+    pub fn builder() -> DeviceBuilder {
+        Default::default()
     }
 }
 

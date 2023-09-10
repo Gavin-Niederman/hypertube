@@ -27,7 +27,7 @@ impl DeviceBuilder {
                 address: None,
                 netmask: None,
                 up: true,
-            }
+            },
         }
     }
 
@@ -71,5 +71,11 @@ impl DeviceBuilder {
 
     pub fn build(self) -> std::io::Result<Device> {
         Device::new(self.config)
+    }
+}
+
+impl Default for DeviceBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
