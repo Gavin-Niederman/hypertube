@@ -11,10 +11,8 @@ use std::{
 
 use cidr::IpCidr;
 
-use crate::{
-    builder::{Config, DeviceBuilder},
-    queue::Queue,
-};
+use super::queue::Queue;
+use crate::builder::{Config, Device as D};
 
 /// A TUN Device.
 /// Create with [`DeviceBuilder`]
@@ -25,11 +23,10 @@ pub struct Device {
     ctl: OwnedFd,
     no_pi: bool,
 }
-
-impl Device {
+impl D for Device {
     /// This function is private.
     /// Use [`DeviceBuilder`] to create a new device.
-    pub(crate) fn new(config: Config) -> io::Result<Self> {
+    fn new(config: Config) -> io::Result<Self> {
         let name = match config.name.clone() {
             Some(name) => {
                 if name.as_bytes_with_nul().len() > libc::IFNAMSIZ {
@@ -59,11 +56,7 @@ impl Device {
         if let Some(name) = name {
             let count = name.as_bytes().len();
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    name.into_raw(),
-                    ifr.ifr_name.as_mut_ptr(),
-                    count,
-                )
+                std::ptr::copy_nonoverlapping(name.into_raw(), ifr.ifr_name.as_mut_ptr(), count)
             };
         }
 
@@ -80,7 +73,13 @@ impl Device {
 
         unsafe {
             for _ in 0..num_queues {
+                // Open the TUN device
+                #[cfg(target_os = "linux")]
                 let result = libc::open(b"/dev/net/tun\0".as_ptr().cast(), libc::O_RDWR);
+                // Open the given TUN device file descriptor
+                #[cfg(target_os = "android")]
+                let result = libc::dup(config.raw_fd.unwrap_or(-1));
+
                 if result < 0 {
                     return Err(io::Error::last_os_error());
                 }
@@ -114,7 +113,9 @@ impl Device {
 
         Ok(device)
     }
+}
 
+impl Device {
     fn configure(&self, config: &Config) -> io::Result<()> {
         if let Some(address) = config.address {
             self.set_address(address)?;
@@ -139,7 +140,6 @@ impl Device {
 
         req
     }
-
 
     /// Enables (brings up) the device.
     pub fn bring_up(&self) -> io::Result<()> {
@@ -230,7 +230,7 @@ impl Device {
                 "queue at index {index} not found",
             ));
         }
-        
+
         let fd = self.queues.remove(index);
 
         unsafe {
@@ -272,14 +272,6 @@ impl Device {
                 }
             },
         )
-    }
-
-    /// Creates a new DeviceBuilder
-    /// This is one of many ways to get a DeviceBuilder including:
-    /// * [`builder()`](crate::builder())
-    /// * [`DeviceBuilder::new()`/`DeviceBuilder::default()`](crate::builder::DeviceBuilder)
-    pub fn builder() -> DeviceBuilder {
-        Default::default()
     }
 }
 

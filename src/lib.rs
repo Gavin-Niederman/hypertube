@@ -36,16 +36,20 @@
 //! In the future, the ability to add or remove queues after the [`Device`] is created should be added.
 
 pub mod builder;
-pub mod device;
-pub mod queue;
 
-pub use device::Device;
-pub use queue::Queue;
+cfg_if::cfg_if! {
+    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+        pub mod linux;
+        pub use linux::device::Device;
+        pub use linux::queue::Queue;
 
-/// Creates a new [`DeviceBuilder`](builder::DeviceBuilder).
-pub fn builder() -> builder::DeviceBuilder {
-    builder::DeviceBuilder::new()
+        /// Creates a new [`DeviceBuilder`](builder::DeviceBuilder).
+        pub fn builder() -> builder::DeviceBuilder<Device> {
+            Default::default()
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {

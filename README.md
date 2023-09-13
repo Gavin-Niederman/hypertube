@@ -51,3 +51,12 @@ You can add to the pool of queues by calling `Device.create_queue()` which will 
 * [X] Non blocking queues
 * [ ] IPV6 support
 * [ ] Cross-platform support
+  * [X] Linux
+    * [X] Linux
+    * [X] Android
+  * [ ] BSD
+    * [ ] Darwin
+      * [ ] Macos
+      * [ ] IOS
+    * [ ] Maybe FreeBSD
+  * [ ] Maybe Windows
