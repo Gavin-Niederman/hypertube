@@ -4,6 +4,7 @@ version = "0.2.2"
 edition = "2021"
 description = "Hypertube is a library for the creation and usage of TUN devices."
 license = "MIT"
+repository = "https://github.com/gavin-niederman/hypertube"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
